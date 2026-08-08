@@ -1,35 +1,26 @@
 {
-  "name": "ai-interview-agent",
+  "name": "ai-interview-agent-monorepo",
   "version": "1.0.0",
   "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "typecheck": "tsc --noEmit",
-    "test": "node --import tsx/esm --test tests/backend.test.ts tests/intelligence.test.ts"
-  },
-  "dependencies": {
-    "better-sqlite3": "^13.0.3",
-    "lucide-react": "^1.30.0",
-    "next": "^14.2.15",
-    "openai": "^4.67.3",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "zod": "^3.23.8"
+    "dev:backend": "node scripts/start-backend.js",
+    "dev:node": "USE_NODE=true node scripts/start-backend.js",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "build:backend": "echo 'Backend ready'",
+    "build:frontend": "npm run build --workspace=frontend",
+    "build": "npm run build:frontend",
+    "test": "node scripts/test-backend.js",
+    "test:node": "npm test --workspace=backend",
+    "db:generate": "echo 'Auto-initialized'",
+    "db:push": "echo 'Auto-initialized'",
+    "db:seed": "echo 'Seeded via retrieval service'"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^9.6.0",
-    "@types/node": "^20.16.11",
-    "@types/react": "^18.3.11",
-    "@types/react-dom": "^18.3.1",
-    "autoprefixer": "^10.4.20",
-    "eslint": "^8.57.1",
-    "eslint-config-next": "^14.2.15",
-    "postcss": "^8.4.47",
-    "tailwindcss": "^3.4.14",
-    "tsx": "^4.19.1",
-    "typescript": "^5.6.3"
+    "concurrently": "^9.1.2"
   }
 }

@@ -1,14 +1,3 @@
-# 📜 AI Interview Agent - Complete LLM Prompt Architecture
-
-This document contains the complete prompt templates used by the AI Interview Agent to conduct personalized, multi-turn technical interviews grounded in the 31-day AI Cohort curriculum.
-
----
-
-## 1. System Prompt (`systemPrompt.ts`)
-
-Defines the core persona, tone, and behavioral principles of the AI lead technical interviewer.
-
-```typescript
 export const SYSTEM_PROMPT = `You are a Principal AI Systems Architect and Lead Engineering Interviewer for the 31-Day AI Cohort.
 
 Your goal is to conduct a realistic, rigorous, and highly encouraging multi-turn technical interview personalized to the candidate's cohort journey.
@@ -20,15 +9,7 @@ Core Principles:
 4. Base questions directly on the 31-day curriculum objectives.
 5. Never output raw internal reasoning or chain-of-thought XML/HTML tags in candidate-facing text.
 `;
-```
 
----
-
-## 2. Primary Question Generation Prompt (`questionPrompt.ts`)
-
-Generates phase-aware, personalized technical questions tailored to the candidate's background and target curriculum day objectives.
-
-```typescript
 export function buildQuestionPrompt(params: {
   candidateName: string;
   jobRole: string;
@@ -41,6 +22,11 @@ export function buildQuestionPrompt(params: {
   questionNumber: number;
   previousQuestions: string[];
 }): string {
+  const objStr = params.objectives.map(o => `- ${o}`).join('\n');
+  const prevStr = params.previousQuestions.length > 0
+    ? params.previousQuestions.map(q => `- ${q}`).join('\n')
+    : '- None';
+
   return `Generate the next technical interview question for candidate ${params.candidateName} (${params.jobRole}, ${params.yearsExperience} yrs experience).
 
 Interview Phase: ${params.phase}
@@ -48,10 +34,10 @@ Target Question #: ${params.questionNumber}
 Curriculum Day: Day ${params.currentDay} - ${params.currentTopic}
 Difficulty Level: ${params.difficulty}
 Curriculum Objectives:
-${params.objectives.map(o => `- ${o}`).join('\n')}
+${objStr}
 
 Previously asked questions (DO NOT repeat these topics/questions):
-${params.previousQuestions.map(q => `- ${q}`).join('\n')}
+${prevStr}
 
 Instructions:
 - Craft an engaging, natural technical question aligned with ${params.currentTopic}.
@@ -68,15 +54,7 @@ Instructions:
 }
 `;
 }
-```
 
----
-
-## 3. Adaptive Follow-Up Prompt (`followupPrompt.ts`)
-
-Generates tier-based follow-up questions (`STRONG`, `PARTIAL`, `WEAK`) on the same curriculum day to probe deeper into production trade-offs or clarify missing concepts.
-
-```typescript
 export function buildFollowupPrompt(params: {
   candidateName: string;
   previousQuestion: string;
@@ -90,13 +68,14 @@ export function buildFollowupPrompt(params: {
   previousQuestions?: string[];
 }): string {
   const prevList = (params.previousQuestions || []).map(q => `- ${q}`).join('\n');
+  const missingStr = params.missingConcepts.length > 0 ? params.missingConcepts.join(', ') : 'None';
 
   return `The candidate (${params.candidateName}) just answered the previous technical question.
 
 Previous Question: "${params.previousQuestion}"
 Candidate Answer: "${params.candidateAnswer}"
 Evaluation Tier: ${params.tier}
-Missing/Unaddressed Concepts: ${params.missingConcepts.join(', ')}
+Missing/Unaddressed Concepts: ${missingStr}
 Curriculum Day: Day ${params.currentDay} - ${params.currentTopic}
 Interview Phase: ${params.phase}
 Difficulty Level: ${params.difficulty}
@@ -106,7 +85,7 @@ ${prevList || '- None'}
 
 Instructions for ${params.tier} tier:
 - STRONG: Provide brief positive feedback ("Great point about...", "Spot on") then challenge them with a deeper production/architectural edge case or scaling scenario.
-- PARTIAL: Acknowledge what they got right, then ask a targeted clarifying question about the missing concepts (${params.missingConcepts.join(', ')}).
+- PARTIAL: Acknowledge what they got right, then ask a targeted clarifying question about the missing concepts (${missingStr}).
 - WEAK: Friendly conceptual pivot or diagnostic hint to help them rebuild their explanation around fundamentals.
 
 Return JSON strictly matching this schema:
@@ -120,15 +99,7 @@ Return JSON strictly matching this schema:
 }
 `;
 }
-```
 
----
-
-## 4. Answer Evaluation Prompt (`evaluationPrompt.ts`)
-
-Evaluates candidate responses objectively and assigns scores, depth tiers, correctness, and missing concepts validated with Zod.
-
-```typescript
 export function buildEvaluationPrompt(params: {
   question: string;
   answer: string;
@@ -171,15 +142,7 @@ Return JSON strictly matching this schema:
 }
 `;
 }
-```
 
----
-
-## 5. Final Feedback Synthesis Prompt (`feedbackPrompt.ts`)
-
-Compiles the session performance history into executive feedback, technical competency sub-scores, strengths, gaps, and next steps upon interview completion.
-
-```typescript
 export function buildFeedbackPrompt(params: {
   candidateName: string;
   jobRole: string;
@@ -193,13 +156,19 @@ export function buildFeedbackPrompt(params: {
   }>;
   topicsCovered: Array<{ day: number; topic: string }>;
 }): string {
+  const evalLines = params.evaluations.map(
+    e => `Q${e.questionNumber}: Score ${e.score}/10 | Depth: ${e.technicalDepth} | Strengths: ${e.strengths.join(', ')} | Weaknesses: ${e.weaknesses.join(', ')}`
+  ).join('\n');
+
+  const topicLines = params.topicsCovered.map(t => `- Day ${t.day}: ${t.topic}`).join('\n');
+
   return `Generate final comprehensive technical interview feedback for candidate ${params.candidateName} (${params.jobRole}).
 
 Session Performance History:
-${params.evaluations.map(e => `Q${e.questionNumber}: Score ${e.score}/10 | Depth: ${e.technicalDepth} | Strengths: ${e.strengths.join(', ')} | Weaknesses: ${e.weaknesses.join(', ')}`).join('\n')}
+${evalLines}
 
 Topics Covered:
-${params.topicsCovered.map(t => `- Day ${t.day}: ${t.topic}`).join('\n')}
+${topicLines}
 
 Instructions:
 - Provide a clear executive summary (3-4 sentences).
@@ -223,4 +192,3 @@ Return JSON strictly matching this schema:
 }
 `;
 }
-```
