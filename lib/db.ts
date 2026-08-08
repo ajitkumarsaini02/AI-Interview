@@ -65,35 +65,32 @@ if (isDbAvailable && db) {
       );
     `);
 
-    // Seed candidates if empty
-    const countRow = db.prepare('SELECT COUNT(*) as count FROM candidates').get() as { count: number };
-    if (countRow.count === 0) {
-      const candidatesJsonPath = path.join(process.cwd(), 'candidates.json');
-      if (fs.existsSync(candidatesJsonPath)) {
-        const content = fs.readFileSync(candidatesJsonPath, 'utf-8');
-        const parsed = JSON.parse(content) as CandidatesData;
+    // Seed / sync candidates from candidates.json if missing
+    const candidatesJsonPath = path.join(process.cwd(), 'candidates.json');
+    if (fs.existsSync(candidatesJsonPath)) {
+      const content = fs.readFileSync(candidatesJsonPath, 'utf-8');
+      const parsed = JSON.parse(content) as CandidatesData;
 
-        const insert = db.prepare(`
-          INSERT INTO candidates (id, name, job_role, years_experience, education, missions_json, signals_json)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-        `);
+      const insert = db.prepare(`
+        INSERT OR IGNORE INTO candidates (id, name, job_role, years_experience, education, missions_json, signals_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `);
 
-        const insertMany = db.transaction((list: Candidate[]) => {
-          for (const c of list) {
-            insert.run(
-              c.member.id,
-              c.member.name,
-              c.member.jobRole,
-              c.member.yearsExperience,
-              c.member.education,
-              JSON.stringify(c.missions || []),
-              JSON.stringify(c.signals || {})
-            );
-          }
-        });
+      const syncMany = db.transaction((list: Candidate[]) => {
+        for (const c of list) {
+          insert.run(
+            c.member.id,
+            c.member.name,
+            c.member.jobRole,
+            c.member.yearsExperience,
+            c.member.education,
+            JSON.stringify(c.missions || []),
+            JSON.stringify(c.signals || {})
+          );
+        }
+      });
 
-        insertMany(parsed.candidates);
-      }
+      syncMany(parsed.candidates);
     }
   } catch (err) {
     console.warn('DB initialization error:', err);

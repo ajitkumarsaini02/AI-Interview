@@ -1,6 +1,5 @@
 import { InterviewSession } from '../types/interview';
 import { dbGetSession, dbCreateSession, dbUpdateSession, dbRecordTurn } from './db';
-import { isMongoConfigured, mongoGetSession, mongoSetSession } from './mongodb';
 
 export interface SessionStore {
   get(sessionId: string): Promise<InterviewSession | null>;
@@ -15,24 +14,7 @@ class HybridSessionStore implements SessionStore {
   async get(sessionId: string): Promise<InterviewSession | null> {
     const mem = this.memoryFallback.get(sessionId);
 
-    // 1. Try MongoDB if configured
-    if (isMongoConfigured()) {
-      try {
-        const mongoSess = await mongoGetSession(sessionId);
-        if (mongoSess) {
-          return {
-            ...mongoSess,
-            askedQuestions: mongoSess.askedQuestions || [],
-            answerEvaluations: mongoSess.answerEvaluations || [],
-            conversationHistory: mongoSess.conversationHistory || [],
-          };
-        }
-      } catch (err) {
-        console.warn('MongoDB getSession failed, falling back:', err);
-      }
-    }
-
-    // 2. Try SQLite
+    // 1. Try SQLite
     try {
       const dbSess = dbGetSession(sessionId);
       if (dbSess) {
@@ -128,13 +110,6 @@ class HybridSessionStore implements SessionStore {
         }
       }
     } catch (err) {}
-
-    // MongoDB update if configured
-    if (isMongoConfigured()) {
-      mongoSetSession(sessionId, safeSession).catch((err) =>
-        console.warn('Async mongoSetSession warning:', err)
-      );
-    }
   }
 
   async delete(sessionId: string): Promise<void> {

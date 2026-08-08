@@ -1,50 +1,33 @@
-# 🚀 InterviewAI — Complete Vercel & MongoDB Deployment Guide
+# 🚀 InterviewAI — Complete Deployment Guide
 
-This guide details how to deploy **InterviewAI** on **Vercel** with **MongoDB Atlas** and **OpenAI**.
+This guide details how to deploy **InterviewAI** on **Vercel** or any cloud platform with **SQLite & File Persistence** and **OpenAI**.
 
 ---
 
 ## 📋 Environment Variables Summary
 
-Add these environment variables in your **Vercel Project Settings** → **Environment Variables**:
+Add this environment variable in your project settings / `.env.local`:
 
 | Variable Name | Description | Example / Value |
 | :--- | :--- | :--- |
 | `OPENAI_API_KEY` | OpenAI API Key for dynamic AI question generation & answer evaluation | `sk-proj-abc123...` |
-| `MONGODB_URI` | MongoDB Atlas Connection String for persistent cloud database storage | `mongodb+srv://user:pass@cluster.mongodb.net/interview_agent?retryWrites=true&w=majority` |
-| `MONGODB_DB` | *(Optional)* Database name (defaults to `interview_agent`) | `interview_agent` |
 
 ---
 
-## 🍃 1. Setting Up Free MongoDB Atlas Database
-
-1. Go to [MongoDB Atlas](https://www.mongodb.com/cloud/atlas/register) and create a free account.
-2. Click **Build a Database** → Choose **M0 Free Cluster**.
-3. Create a Database User (Username & Password).
-4. Under **Network Access**, click **Add IP Address** → Choose **Allow Access from Anywhere** (`0.0.0.0/0`).
-5. Click **Connect** → Choose **Drivers (Node.js)**.
-6. Copy your connection URI string:
-   ```text
-   mongodb+srv://<username>:<password>@cluster0.mongodb.net/interview_agent?retryWrites=true&w=majority
-   ```
-
----
-
-## ⚡ 2. Deploying on Vercel
+## ⚡ Deploying on Vercel
 
 ### Method A: Vercel Web Dashboard (GitHub)
 
 1. Push your repository to **GitHub**:
    ```bash
    git add .
-   git commit -m "Add MongoDB Atlas & Vercel deployment setup"
+   git commit -m "Deploy InterviewAI with SQLite & File Storage"
    git push origin main
    ```
 2. Open [Vercel Dashboard](https://vercel.com/new) and click **Import Project**.
-3. Select your `ai-interview-agent` repository.
+3. Select your `interview-agent` repository.
 4. Expand **Environment Variables** and add:
    - `OPENAI_API_KEY`: `sk-proj-...`
-   - `MONGODB_URI`: `mongodb+srv://...`
 5. Click **Deploy**. Vercel will build and launch your application instantly!
 
 ---
@@ -55,10 +38,9 @@ Add these environment variables in your **Vercel Project Settings** → **Enviro
    ```bash
    npx vercel
    ```
-2. Add environment variables:
+2. Add environment variable:
    ```bash
    npx vercel env add OPENAI_API_KEY
-   npx vercel env add MONGODB_URI
    ```
 3. Deploy to production:
    ```bash
@@ -67,8 +49,8 @@ Add these environment variables in your **Vercel Project Settings** → **Enviro
 
 ---
 
-## 🛡️ Architecture & Failover Guarantee
+## 🛡️ Storage Architecture
 
-- **Primary**: MongoDB Atlas Cloud DB (when `MONGODB_URI` is set).
-- **Secondary**: SQLite DB (`interview.db`) on traditional Node servers.
-- **Fallback**: In-Memory session store for serverless hot lambdas.
+- **Database**: SQLite DB (`interview.db`) for structured relational session and candidate storage.
+- **Disk Persistence**: `candidates.json` persistent storage fallback.
+- **In-Memory Store**: Rapid turn evaluation and session caching.

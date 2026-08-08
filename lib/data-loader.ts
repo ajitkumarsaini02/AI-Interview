@@ -3,7 +3,6 @@ import path from 'path';
 import { CurriculumData } from '../types/curriculum';
 import { CandidatesData, Candidate } from '../types/candidate';
 import { dbGetCandidates, dbGetCandidateById, dbAddCandidate, dbDeleteCandidate } from './db';
-import { isMongoConfigured, mongoGetCandidates, mongoGetCandidateById, mongoAddCandidate, mongoDeleteCandidate } from './mongodb';
 
 let cachedCurriculum: CurriculumData | null = null;
 let cachedCandidatesMemory: Candidate[] | null = null;
@@ -42,6 +41,15 @@ function loadBaseCandidates(): Candidate[] {
   return (JSON.parse(fileContent) as CandidatesData).candidates;
 }
 
+function saveCandidatesToJson(candidates: Candidate[]): void {
+  try {
+    const filePath = path.join(process.cwd(), 'candidates.json');
+    fs.writeFileSync(filePath, JSON.stringify({ candidates }, null, 2), 'utf-8');
+  } catch (err) {
+    console.warn('Failed to write candidates to candidates.json:', err);
+  }
+}
+
 export function getCandidateById(candidateId: string): Candidate | null {
   const data = getCandidates();
   return data.candidates.find((c) => c.member.id === candidateId) || null;
@@ -55,11 +63,9 @@ export function addCandidate(candidate: Candidate): CandidatesData {
     dbAddCandidate(candidate);
   } catch (err) {}
 
-  if (isMongoConfigured()) {
-    mongoAddCandidate(candidate).catch((err) => console.warn('Async mongoAddCandidate warning:', err));
-  }
-
-  return getCandidates();
+  const currentData = getCandidates();
+  saveCandidatesToJson(currentData.candidates);
+  return currentData;
 }
 
 export function deleteCandidate(candidateId: string): CandidatesData {
@@ -71,9 +77,7 @@ export function deleteCandidate(candidateId: string): CandidatesData {
     dbDeleteCandidate(candidateId);
   } catch (err) {}
 
-  if (isMongoConfigured()) {
-    mongoDeleteCandidate(candidateId).catch((err) => console.warn('Async mongoDeleteCandidate warning:', err));
-  }
-
-  return getCandidates();
+  const currentData = getCandidates();
+  saveCandidatesToJson(currentData.candidates);
+  return currentData;
 }

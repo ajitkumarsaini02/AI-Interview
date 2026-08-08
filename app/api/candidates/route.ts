@@ -28,7 +28,15 @@ export async function POST(req: NextRequest) {
     }
 
     const existingCandidates = getCandidates().candidates;
-    const newIdNum = existingCandidates.length + 1;
+    const maxIdNum = existingCandidates.reduce((max, c) => {
+      const match = c.member?.id?.match(/CAND-(\d+)/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        return num > max ? num : max;
+      }
+      return max;
+    }, 0);
+    const newIdNum = maxIdNum + 1;
     const id = `CAND-${newIdNum < 10 ? `00${newIdNum}` : newIdNum < 100 ? `0${newIdNum}` : newIdNum}`;
 
     const newCandidate: Candidate = {
