@@ -44,6 +44,20 @@ app.add_middleware(
 app.include_router(interview_router, prefix="/api")
 
 
+@app.get("/")
+def root():
+    return {
+        "status": "ok",
+        "message": "AI Technical Interview Agent Backend API is running.",
+        "health": "/health",
+        "endpoints": {
+            "candidates": "/api/candidates",
+            "curriculum": "/api/curriculum",
+            "interview": "/api/interview",
+        },
+    }
+
+
 @app.get("/health")
 def health_check():
     return {

@@ -259,6 +259,20 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 
+// Root endpoint
+app.get('/', (req: Request, res: Response) => {
+  res.json({
+    status: 'ok',
+    message: 'AI Technical Interview Agent Backend API is running.',
+    health: '/health',
+    endpoints: {
+      candidates: '/api/candidates',
+      curriculum: '/api/curriculum',
+      interview: '/api/interview',
+    },
+  });
+});
+
 const PORT = parseInt(process.env.PORT || '4000', 10);
 
 if (process.env.NODE_ENV !== 'test' && require.main === module) {
