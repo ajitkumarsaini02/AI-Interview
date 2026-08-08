@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "node ../scripts/start-backend.js",
-    "start": "node ../scripts/start-backend.js",
+    "start": "node dist/server.js",
     "build": "tsc",
     "test": "vitest run",
     "test:all": "node ../scripts/test-backend.js",

@@ -275,9 +275,9 @@ app.get('/', (req: Request, res: Response) => {
 
 const PORT = parseInt(process.env.PORT || '4000', 10);
 
-if (process.env.NODE_ENV !== 'test' && require.main === module) {
+if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
   app.listen(PORT, () => {
-    console.log(`🚀 Starting TypeScript Express backend on http://localhost:${PORT}`);
+    console.log(`🚀 Starting TypeScript Express backend on port ${PORT}`);
   });
 }
 
