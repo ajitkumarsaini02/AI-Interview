@@ -1,12 +1,12 @@
-# 📜 AI Interview Agent - Complete LLM Prompt Architecture
+# 📜 AI Technical Interview Agent - LLM Prompt Architecture
 
 This document contains the complete prompt templates used by the AI Interview Agent to conduct personalized, multi-turn technical interviews grounded in the 31-day AI Cohort curriculum.
 
 ---
 
-## 1. System Prompt (`systemPrompt.ts`)
+## 1. System Prompt (`SYSTEM_PROMPT`)
 
-Defines the core persona, tone, and behavioral principles of the AI lead technical interviewer.
+Defines the core persona, tone, and behavioral principles of the lead technical interviewer.
 
 ```typescript
 export const SYSTEM_PROMPT = `You are a Principal AI Systems Architect and Lead Engineering Interviewer for the 31-Day AI Cohort.
@@ -24,7 +24,7 @@ Core Principles:
 
 ---
 
-## 2. Primary Question Generation Prompt (`questionPrompt.ts`)
+## 2. Primary Question Generation Prompt (`build_question_prompt`)
 
 Generates phase-aware, personalized technical questions tailored to the candidate's background and target curriculum day objectives.
 
@@ -72,7 +72,7 @@ Instructions:
 
 ---
 
-## 3. Adaptive Follow-Up Prompt (`followupPrompt.ts`)
+## 3. Adaptive Follow-Up Prompt (`build_followup_prompt`)
 
 Generates tier-based follow-up questions (`STRONG`, `PARTIAL`, `WEAK`) on the same curriculum day to probe deeper into production trade-offs or clarify missing concepts.
 
@@ -124,9 +124,9 @@ Return JSON strictly matching this schema:
 
 ---
 
-## 4. Answer Evaluation Prompt (`evaluationPrompt.ts`)
+## 4. Answer Evaluation Prompt (`build_evaluation_prompt`)
 
-Evaluates candidate responses objectively and assigns scores, depth tiers, correctness, and missing concepts validated with Zod.
+Evaluates candidate responses objectively and assigns scores (0-10), correctness tiers, technical depth, and missing concepts.
 
 ```typescript
 export function buildEvaluationPrompt(params: {
@@ -144,16 +144,20 @@ Objectives: ${params.objectives.join('; ')}
 Question: "${params.question}"
 Candidate Answer: "${params.answer}"
 
-Evaluate objectively:
+Evaluate objectively and fairly based on factual correctness, relevance, and candidate understanding:
 1. Score from 0 to 10.
+   - 8-10 (STRONG, correct): The candidate's answer is accurate, relevant, and demonstrates sound technical understanding.
+   - 6-7 (PARTIAL, mostly_correct): The answer covers key points but lacks minor completeness or depth.
+   - 4-5 (PARTIAL, partially_correct): The answer shows partial understanding but has notable gaps.
+   - 0-3 (WEAK, incorrect): Factually wrong, completely off-topic, evasive ("idk", "pass"), or pure gibberish.
 2. Correctness tier (correct, mostly_correct, partially_correct, incorrect).
 3. Technical depth (deep, medium, surface, none).
-4. Communication (clear, concise, verbose, unclear).
-5. List missing key concepts or misconceptions.
+4. Communication (clear, concise, verbose, unclear, evasive).
+5. List missing key concepts or misconceptions (if any).
 6. Determine overall performance tier:
-   - "STRONG" (score >= 8): Clear understanding, good technical depth.
-   - "PARTIAL" (score 5-7): Partially correct, missed key nuances or details.
-   - "WEAK" (score < 5): Incorrect or superficial answer.
+   - "STRONG" (score >= 8): Clear understanding and correct technical answer.
+   - "PARTIAL" (score 6-7): Mostly correct with minor gaps.
+   - "WEAK" (score < 6): Incorrect, evasive, or off-topic answer.
 
 Return JSON strictly matching this schema:
 {
@@ -175,7 +179,7 @@ Return JSON strictly matching this schema:
 
 ---
 
-## 5. Final Feedback Synthesis Prompt (`feedbackPrompt.ts`)
+## 5. Final Feedback Synthesis Prompt (`build_feedback_prompt`)
 
 Compiles the session performance history into executive feedback, technical competency sub-scores, strengths, gaps, and next steps upon interview completion.
 
@@ -202,11 +206,11 @@ Topics Covered:
 ${params.topicsCovered.map(t => `- Day ${t.day}: ${t.topic}`).join('\n')}
 
 Instructions:
-- Provide a clear executive summary (3-4 sentences).
+- Provide a clear executive summary (3-4 sentences) reflecting their actual session performance.
 - List 3-5 key technical strengths demonstrated during the interview.
 - List 2-4 specific knowledge gaps or areas for improvement.
 - List 3-4 actionable next steps for their engineering journey.
-- Provide subScores (0-100) for technicalDepth, systemDesign, communication, adaptability.
+- Provide subScores (0-100) for technicalDepth, systemDesign, communication, adaptability. Subscores MUST be proportional to the candidate's average score across their session evaluations.
 
 Return JSON strictly matching this schema:
 {
