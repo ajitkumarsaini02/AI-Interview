@@ -9,7 +9,7 @@ export class GeminiProvider implements LLMProvider {
     try {
       const { GoogleGenerativeAI } = require('@google/generative-ai');
       const genAI = new GoogleGenerativeAI(apiKey);
-      this.model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+      this.model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
     } catch (err) {
       console.warn('Gemini SDK initialization warning:', err);
     }
@@ -20,14 +20,15 @@ export class GeminiProvider implements LLMProvider {
       throw new Error('GeminiProvider not initialized');
     }
 
-    const fullPrompt = `${systemPrompt}\n\n${prompt}\n\nReturn JSON ONLY matching the requested schema.`;
+    const fullPrompt = `${systemPrompt}\n\n${prompt}\n\nReturn JSON ONLY matching the requested schema. Do not include raw markdown block wrappers.`;
     const result = await this.model.generateContent({
       contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
       generationConfig: { responseMimeType: 'application/json' },
     });
 
-    const text = result.response.text();
-    const data = JSON.parse(text);
+    const rawText = result.response.text();
+    const cleanText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const data = JSON.parse(cleanText);
     return schema.parse(data);
   }
 }

@@ -35,58 +35,130 @@ export class DemoProvider implements LLMProvider {
   }
 
   private handleEvaluation(prompt: string): any {
+    const questionMatch = prompt.match(/Question:\s*"([^"]+)"/i) || prompt.match(/Question:\s*(.+)/i);
+    const question = questionMatch ? questionMatch[1].trim() : '';
+
     const answerMatch = prompt.match(/Candidate Answer:\s*"([^"]+)"/i) || prompt.match(/Candidate Answer:\s*(.+)/i);
     const answer = answerMatch ? answerMatch[1].trim() : '';
 
-    const length = answer.length;
-    const keywords = [
+    const cleanAnswer = answer.toLowerCase().trim();
+    const length = cleanAnswer.length;
+
+    // 1. Exact Evasive Check (strict set of non-answer phrases)
+    const exactEvasiveSet = new Set([
+      'idk', "don't know", 'dont know', 'no idea', 'pass', 'skip', 'dunno',
+      'nothing', 'no answer', 'whatever', 'garbage', 'kuch bhi', 'galat',
+      'cant answer', "can't answer", 'no', 'na', 'nhi', 'nahi'
+    ]);
+
+    const isExplicitEvasive = exactEvasiveSet.has(cleanAnswer);
+
+    // 2. Keyboard Mashing Check (random consecutive mashing patterns or mashing without vowels)
+    const mashingPattern = /^(asdfghjkl|qwertyuiop|zxcvbnm|[1234567890]{4,}|[bcdfghjklmnpqrstvwxyz]{6,})$/i;
+    const hasVowels = /[aeiouy]/i.test(cleanAnswer);
+    const isKeyboardMashing = mashingPattern.test(cleanAnswer) || (!hasVowels && length > 5);
+
+    const isTooShort = length < 3;
+
+    if (isExplicitEvasive || isKeyboardMashing || isTooShort) {
+      return {
+        score: isKeyboardMashing ? 1 : isExplicitEvasive ? 2 : 1,
+        correctness: 'incorrect',
+        technicalDepth: 'none',
+        communication: 'evasive',
+        missingConcepts: ['Core technical concept', 'Direct answer to question'],
+        misconceptions: ['Answer was evasive, gibberish, or non-responsive'],
+        strengths: [],
+        weaknesses: ['Failed to provide a relevant technical response'],
+        shouldFollowUp: true,
+        followUpType: 'diagnostic',
+        tier: 'WEAK',
+      };
+    }
+
+    // 3. Relevancy & Quality Assessment
+    const domainKeywords = [
       'vector', 'embedding', 'rag', 'agent', 'mcp', 'latency', 'hnsw', 'index',
       'retrieval', 'hybrid', 'sql', 'context', 'chunk', 'transformer', 'prompt',
-      'temperature', 'eval', 'docker', 'token', 'cache', 'venv', 'python', 'fastapi', 'express', 'react'
+      'temperature', 'eval', 'docker', 'token', 'cache', 'venv', 'python', 'fastapi',
+      'express', 'react', 'similarity', 'cosine', 'distance', 'nearest', 'dimension',
+      'quantization', 're-rank', 'rerank', 'concurrency', 'state', 'sse', 'websocket',
+      'model', 'data', 'database', 'api', 'server', 'code', 'search', 'query',
+      'parameter', 'memory', 'pip', 'virtual', 'environment', 'setup', 'llm', 'ai'
     ];
-    const hitCount = keywords.filter(k => answer.toLowerCase().includes(k)).length;
 
-    let score = 5;
+    const questionWords = question.toLowerCase().match(/\b[a-z]{3,}\b/g) || [];
+    const questionHitCount = questionWords.filter(w => cleanAnswer.includes(w)).length;
+    const domainHitCount = domainKeywords.filter(k => cleanAnswer.includes(k)).length;
+
+    const totalHits = domainHitCount + questionHitCount;
+
+    // Check for off-topic response
+    const offTopicKeywords = ['pizza', 'cricket', 'weather', 'movie', 'football', 'burger', 'dance', 'song'];
+    const isOffTopic = offTopicKeywords.some(w => cleanAnswer.includes(w)) && totalHits === 0;
+
+    if (isOffTopic) {
+      return {
+        score: 2,
+        correctness: 'incorrect',
+        technicalDepth: 'none',
+        communication: 'unclear',
+        missingConcepts: ['Technical domain principles'],
+        misconceptions: ['Answer was off-topic and unrelated to the question'],
+        strengths: [],
+        weaknesses: ['Answer was completely irrelevant to the technical question'],
+        shouldFollowUp: true,
+        followUpType: 'diagnostic',
+        tier: 'WEAK',
+      };
+    }
+
+    // 4. Scoring for Genuine Technical Answers
+    if (totalHits === 0) {
+      return {
+        score: 2,
+        correctness: 'incorrect',
+        technicalDepth: 'none',
+        communication: 'unclear',
+        missingConcepts: ['Core technical domain concepts', 'Relevant answer to question'],
+        misconceptions: ['Answer was off-topic, gibberish, or non-responsive'],
+        strengths: [],
+        weaknesses: ['Failed to address the asked technical question'],
+        shouldFollowUp: true,
+        followUpType: 'diagnostic',
+        tier: 'WEAK',
+      };
+    }
+
+    let score = 7;
     let tier: 'STRONG' | 'PARTIAL' | 'WEAK' = 'PARTIAL';
-    let correctness = 'partially_correct';
+    let correctness = 'mostly_correct';
     let technicalDepth = 'medium';
     let followUpType: 'deep_dive' | 'clarification' | 'diagnostic' = 'clarification';
 
-    if (length > 100 && hitCount >= 2) {
+    if (totalHits >= 2 || (length > 35 && totalHits >= 1)) {
       score = 9;
       tier = 'STRONG';
       correctness = 'correct';
       technicalDepth = 'deep';
       followUpType = 'deep_dive';
-    } else if (length > 35 || hitCount >= 1) {
+    } else {
       score = 7;
       tier = 'PARTIAL';
       correctness = 'mostly_correct';
       technicalDepth = 'medium';
       followUpType = 'clarification';
-    } else {
-      score = 4;
-      tier = 'WEAK';
-      correctness = 'partially_correct';
-      technicalDepth = 'surface';
-      followUpType = 'diagnostic';
     }
-
-    const missingConcepts = (tier === 'STRONG')
-      ? []
-      : (tier === 'PARTIAL')
-      ? ['production edge cases', 'architecture optimization']
-      : ['core theoretical concepts', 'engineering trade-offs'];
 
     return {
       score,
       correctness,
       technicalDepth,
-      communication: length > 80 ? 'clear' : 'concise',
-      missingConcepts,
-      misconceptions: tier === 'WEAK' ? ['Confused high-level abstraction with low-level implementation details'] : [],
-      strengths: tier === 'STRONG' ? ['Identified main architectural components', 'Good technical domain vocabulary'] : ['Addressed the primary question prompt'],
-      weaknesses: tier === 'STRONG' ? [] : ['Could provide more specific numerical trade-offs or production details'],
+      communication: length > 40 ? 'clear' : 'concise',
+      missingConcepts: tier === 'STRONG' ? [] : ['Further architectural trade-offs'],
+      misconceptions: [],
+      strengths: ['Addressed question concepts accurately', 'Demonstrated sound engineering principles'],
+      weaknesses: tier === 'STRONG' ? [] : ['Could provide additional production details'],
       shouldFollowUp: true,
       followUpType,
       tier,
@@ -196,27 +268,49 @@ export class DemoProvider implements LLMProvider {
   }
 
   private handleFeedback(prompt: string): any {
+    const scoreMatches = Array.from(prompt.matchAll(/Score\s*(\d+)\/10/gi));
+    const scores = scoreMatches.map(m => parseInt(m[1], 10));
+
+    const avgScore = scores.length > 0
+      ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10)
+      : 75;
+
+    const isHigh = avgScore >= 70;
+    const isMedium = avgScore >= 45 && avgScore < 70;
+
     return {
-      summary: "The candidate demonstrated impressive technical depth across AI engineering fundamentals, system design, and multi-agent architecture. They showed strong reasoning when discussing vector retrieval trade-offs and multi-service deployment.",
-      strengths: [
-        "Strong understanding of vector database indexing and semantic retrieval strategies.",
-        "Solid architectural vision for multi-turn conversational state and backend API integration.",
+      summary: isHigh
+        ? "The candidate demonstrated solid technical depth across AI cohort topics, showcasing clear reasoning on architecture and system trade-offs."
+        : isMedium
+        ? "The candidate demonstrated partial technical understanding across cohort topics, showing good high-level awareness but missing several low-level details."
+        : "The candidate struggled with technical depth during the session, giving evasive or incorrect responses on several core curriculum topics.",
+      strengths: isHigh ? [
+        "Strong understanding of vector database indexing and retrieval strategies.",
+        "Solid architectural vision for multi-turn state and backend API integration.",
         "Clear communication of engineering trade-offs between speed, cost, and accuracy."
+      ] : isMedium ? [
+        "Identified basic high-level system components.",
+        "Attempted answers across multiple curriculum days."
+      ] : [
+        "Attempted the technical assessment session."
       ],
-      gaps: [
-        "Could deepen knowledge around ANN (Approximate Nearest Neighbor) graph parameters like HNSW M and efConstruction.",
+      gaps: isHigh ? [
+        "Could deepen knowledge around ANN graph parameters like HNSW M and efConstruction.",
         "Production observability and structured evaluation frameworks could be explored further."
+      ] : [
+        "Need fundamental review of vector embeddings, RAG architectures, and tool calling.",
+        "Precision in technical vocabulary and system design trade-offs requires improvement."
       ],
       next: [
-        "Study HNSW parameter tuning for high-throughput vector search optimization.",
+        "Review vector database indexing options (HNSW, IVFFlat, SQ8).",
         "Practice building custom MCP tools and multi-agent routing workflows.",
-        "Explore automated RAG evaluation metrics using Ragas or TruLens."
+        "Study automated RAG evaluation metrics using LLM-as-a-judge frameworks."
       ],
       subScores: {
-        technicalDepth: 85,
-        systemDesign: 82,
-        communication: 88,
-        adaptability: 84
+        technicalDepth: Math.max(10, Math.min(100, avgScore)),
+        systemDesign: Math.max(10, Math.min(100, isHigh ? avgScore - 3 : avgScore)),
+        communication: Math.max(10, Math.min(100, isHigh ? avgScore + 4 : avgScore)),
+        adaptability: Math.max(10, Math.min(100, avgScore))
       }
     };
   }

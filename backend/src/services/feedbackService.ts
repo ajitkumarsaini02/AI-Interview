@@ -22,8 +22,10 @@ export class FeedbackService {
     jobRole: string;
     evaluations: EvaluationResult[];
     topicsCovered: Array<{ day: number; topic: string }>;
+    apiKey?: string;
+    provider?: string;
   }): Promise<FeedbackResult> {
-    const llm = getLLMProvider();
+    const llm = getLLMProvider(params.apiKey, params.provider);
 
     const formattedEvals = params.evaluations.map((e, idx) => ({
       questionNumber: idx + 1,

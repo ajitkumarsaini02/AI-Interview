@@ -27,7 +27,8 @@ export class GroqProvider implements LLMProvider {
     });
 
     const content = response.choices[0]?.message?.content || '{}';
-    const data = JSON.parse(content);
+    const cleanText = content.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const data = JSON.parse(cleanText);
     return schema.parse(data);
   }
 }

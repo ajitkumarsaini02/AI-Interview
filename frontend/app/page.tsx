@@ -78,23 +78,23 @@ export default function CandidateSelectionPage() {
   }
 
   return (
-    <div className="space-y-10 py-4 animate-fade-in">
+    <div className="space-y-6 sm:space-y-10 py-2 sm:py-4 animate-fade-in">
       {/* Hero Header */}
-      <div className="relative overflow-hidden rounded-2xl glass-panel p-8 sm:p-10 border border-zinc-800">
+      <div className="relative overflow-hidden rounded-2xl glass-panel p-5 sm:p-8 lg:p-10 border border-zinc-800">
         <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl -z-10 pointer-events-none" />
         <div className="absolute bottom-0 left-1/3 w-64 h-64 bg-purple-600/10 rounded-full blur-3xl -z-10 pointer-events-none" />
 
-        <div className="max-w-3xl space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-medium bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+        <div className="max-w-3xl space-y-3 sm:space-y-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] sm:text-xs font-mono font-medium bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
             <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
             <span>Multi-Turn Adaptive AI Evaluation</span>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">
             Select a Candidate to Begin Technical Assessment
           </h1>
 
-          <p className="text-zinc-400 text-sm sm:text-base leading-relaxed">
+          <p className="text-zinc-400 text-xs sm:text-sm lg:text-base leading-relaxed">
             Your personalized technical interview. The AI agent analyzes completed missions, passed/failed topics, and learning signals across the 31-day AI Cohort to conduct a real adaptive technical interview.
           </p>
         </div>
@@ -110,15 +110,15 @@ export default function CandidateSelectionPage() {
       )}
 
       {/* Main Grid: Candidate Roster & Focus Preview */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
         {/* Left Column: Candidate Roster (7 cols) */}
         <div className="lg:col-span-7 space-y-4">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-bold text-zinc-100 flex items-center gap-2">
+            <h2 className="text-base sm:text-lg font-bold text-zinc-100 flex items-center gap-2">
               <User className="w-5 h-5 text-indigo-400" />
               Candidate Cohort Roster ({candidates.length})
             </h2>
-            <span className="text-xs text-zinc-500 font-mono">Select candidate to inspect strategy</span>
+            <span className="text-[11px] sm:text-xs text-zinc-500 font-mono hidden xs:inline">Select candidate to inspect strategy</span>
           </div>
 
           <div className="space-y-4">
@@ -133,7 +133,7 @@ export default function CandidateSelectionPage() {
                 <div
                   key={cand.member.id}
                   onClick={() => setSelectedCandidate(cand)}
-                  className={`cursor-pointer rounded-xl p-5 transition-all ${
+                  className={`cursor-pointer rounded-xl p-4 sm:p-5 transition-all ${
                     isSelected
                       ? 'bg-zinc-900/90 border-2 border-indigo-500 shadow-lg shadow-indigo-500/10'
                       : 'glass-card hover:border-zinc-700'
@@ -141,12 +141,12 @@ export default function CandidateSelectionPage() {
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="space-y-1.5">
-                      <div className="flex items-center gap-3">
-                        <span className="font-bold text-base text-zinc-100">{cand.member.name}</span>
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                        <span className="font-bold text-sm sm:text-base text-zinc-100">{cand.member.name}</span>
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                           {cand.member.status}
                         </span>
-                        <span className="text-xs font-mono text-zinc-500">{cand.member.id}</span>
+                        <span className="text-[11px] font-mono text-zinc-500">{cand.member.id}</span>
                       </div>
 
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-400">
@@ -167,7 +167,7 @@ export default function CandidateSelectionPage() {
                         handleStartInterview(cand);
                       }}
                       disabled={starting !== null}
-                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs shadow-md shadow-indigo-600/30 transition-all disabled:opacity-50"
+                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs shadow-md shadow-indigo-600/30 transition-all disabled:opacity-50"
                     >
                       {isStartingThis ? (
                         <>
@@ -184,20 +184,20 @@ export default function CandidateSelectionPage() {
                   </div>
 
                   {/* Signals & Missions Bar */}
-                  <div className="mt-4 pt-3 border-t border-zinc-800/60 grid grid-cols-3 gap-2 text-center text-xs font-mono">
+                  <div className="mt-4 pt-3 border-t border-zinc-800/60 grid grid-cols-1 sm:grid-cols-3 gap-2 text-center text-xs font-mono">
                     <div className="bg-zinc-950/60 rounded-lg p-2 border border-zinc-800/40">
                       <span className="text-zinc-500 block text-[10px] uppercase">Passed</span>
-                      <span className="text-emerald-400 font-bold text-sm">{passedCount} missions</span>
+                      <span className="text-emerald-400 font-bold text-xs sm:text-sm">{passedCount} missions</span>
                     </div>
                     <div className="bg-zinc-950/60 rounded-lg p-2 border border-zinc-800/40">
                       <span className="text-zinc-500 block text-[10px] uppercase">1st Try Mastery</span>
-                      <span className="text-indigo-400 font-bold text-sm">
+                      <span className="text-indigo-400 font-bold text-xs sm:text-sm">
                         {cand.signals?.missionsFirstTry || 0} / {cand.signals?.missionsCompleted || 0}
                       </span>
                     </div>
                     <div className="bg-zinc-950/60 rounded-lg p-2 border border-zinc-800/40">
                       <span className="text-zinc-500 block text-[10px] uppercase">Skipped / Failed</span>
-                      <span className="text-amber-400 font-bold text-sm">
+                      <span className="text-amber-400 font-bold text-xs sm:text-sm">
                         {skippedCount} skip • {failedCount} fail
                       </span>
                     </div>

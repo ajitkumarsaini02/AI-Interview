@@ -6,33 +6,35 @@ import { GroqProvider } from './groqProvider.js';
 
 let currentProvider: LLMProvider | null = null;
 
-export function getLLMProvider(): LLMProvider {
-  if (currentProvider) return currentProvider;
+export function getLLMProvider(customKey?: string, customProvider?: string): LLMProvider {
+  const geminiKey = customKey || process.env.GEMINI_API_KEY;
+  const openaiKey = customKey || process.env.OPENAI_API_KEY;
+  const groqKey = customKey || process.env.GROQ_API_KEY;
+  const providerName = (customProvider || process.env.LLM_PROVIDER || '').toLowerCase();
 
-  const isDemo = (process.env.DEMO_MODE || '').toLowerCase() === 'true' || process.env.DEMO_MODE === '1';
-  const providerName = (process.env.LLM_PROVIDER || '').toLowerCase();
-
-  if (!isDemo) {
-    const geminiKey = process.env.GEMINI_API_KEY;
-    const openaiKey = process.env.OPENAI_API_KEY;
-    const groqKey = process.env.GROQ_API_KEY;
-
-    if ((providerName === 'gemini' || !providerName) && geminiKey) {
-      currentProvider = new GeminiProvider(geminiKey);
-      return currentProvider;
-    }
-
-    if ((providerName === 'openai' || !providerName) && openaiKey) {
-      currentProvider = new OpenAIProvider(openaiKey);
-      return currentProvider;
-    }
-
-    if ((providerName === 'groq' || !providerName) && groqKey) {
-      currentProvider = new GroqProvider(groqKey);
-      return currentProvider;
+  if (geminiKey && (providerName === 'gemini' || !providerName || providerName === 'demo')) {
+    try {
+      return new GeminiProvider(geminiKey);
+    } catch (err) {
+      console.warn('Failed to initialize GeminiProvider:', err);
     }
   }
 
-  currentProvider = new DemoProvider();
-  return currentProvider;
+  if (openaiKey && (providerName === 'openai' || !providerName || providerName === 'demo')) {
+    try {
+      return new OpenAIProvider(openaiKey);
+    } catch (err) {
+      console.warn('Failed to initialize OpenAIProvider:', err);
+    }
+  }
+
+  if (groqKey && (providerName === 'groq' || !providerName || providerName === 'demo')) {
+    try {
+      return new GroqProvider(groqKey);
+    } catch (err) {
+      console.warn('Failed to initialize GroqProvider:', err);
+    }
+  }
+
+  return new DemoProvider();
 }

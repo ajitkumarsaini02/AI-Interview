@@ -39,6 +39,9 @@ app.post('/api/interview', async (req: Request, res: Response): Promise<any> => 
     return res.status(400).json({ error: 'Payload must be a JSON object' });
   }
 
+  const apiKey = body.apiKey || (req.headers['x-api-key'] as string) || undefined;
+  const provider = body.provider || (req.headers['x-llm-provider'] as string) || undefined;
+
   // 1. Start Session Request
   if (body.candidate) {
     const { sessionId, candidate } = body;
@@ -59,6 +62,8 @@ app.post('/api/interview', async (req: Request, res: Response): Promise<any> => 
       phase: 'FUNDAMENTALS',
       questionNumber: 1,
       previousQuestions: [],
+      apiKey,
+      provider,
     });
 
     initialState.questionNumber = 1;
@@ -113,6 +118,8 @@ app.post('/api/interview', async (req: Request, res: Response): Promise<any> => 
       answer: message,
       day: state.currentDay,
       topic: state.currentTopic,
+      apiKey,
+      provider,
     });
     evaluations.push(evaluation);
     state.evaluations.push(evaluation);
@@ -129,6 +136,8 @@ app.post('/api/interview', async (req: Request, res: Response): Promise<any> => 
         jobRole: candidate.member.jobRole,
         evaluations: state.evaluations,
         topicsCovered: state.topicsCovered,
+        apiKey,
+        provider,
       });
       sessionData.feedback = feedback;
 
@@ -167,6 +176,8 @@ app.post('/api/interview', async (req: Request, res: Response): Promise<any> => 
       previousQuestion: lastQuestion,
       candidateAnswer: message,
       lastEvaluation: evaluation,
+      apiKey,
+      provider,
     });
 
     state.previousQuestions.push(nextQResult.reply);

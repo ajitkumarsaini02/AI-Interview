@@ -18,7 +18,7 @@ export class OpenAIProvider implements LLMProvider {
     if (!this.client) throw new Error('OpenAI client not initialized');
 
     const response = await this.client.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt },
@@ -27,7 +27,8 @@ export class OpenAIProvider implements LLMProvider {
     });
 
     const content = response.choices[0]?.message?.content || '{}';
-    const data = JSON.parse(content);
+    const cleanText = content.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const data = JSON.parse(cleanText);
     return schema.parse(data);
   }
 }

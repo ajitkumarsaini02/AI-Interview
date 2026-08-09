@@ -40,57 +40,119 @@ class DemoProvider(LLMProvider):
         raise ValueError(f"DemoProvider: Unsupported prompt type: {prompt[:100]}")
 
     def _handle_evaluation(self, prompt: str) -> dict:
+        question_match = re.search(r'Question:\s*"([^"]+)"', prompt, re.IGNORECASE) or re.search(r'Question:\s*(.+)', prompt, re.IGNORECASE)
+        question = question_match.group(1).strip() if question_match else ""
+
         answer_match = re.search(r'Candidate Answer:\s*"([^"]+)"', prompt, re.IGNORECASE) or re.search(r'Candidate Answer:\s*(.+)', prompt, re.IGNORECASE)
         answer = answer_match.group(1).strip() if answer_match else ""
 
-        length = len(answer)
-        keywords = [
+        clean_answer = answer.lower().strip()
+        length = len(clean_answer)
+
+        # 1. Exact Evasive Check (strict set of non-answer phrases)
+        exact_evasive_set = {
+            "idk", "don't know", "dont know", "no idea", "pass", "skip", "dunno",
+            "nothing", "no answer", "whatever", "garbage", "kuch bhi", "galat",
+            "cant answer", "can't answer", "no", "na", "nhi", "nahi"
+        }
+
+        is_explicit_evasive = clean_answer in exact_evasive_set
+
+        # 2. Keyboard Mashing Check
+        mashing_pattern = re.compile(r'^(asdfghjkl|qwertyuiop|zxcvbnm|[1234567890]{4,}|[bcdfghjklmnpqrstvwxyz]{6,})$', re.IGNORECASE)
+        has_vowels = bool(re.search(r'[aeiouy]', clean_answer, re.IGNORECASE))
+        is_keyboard_mashing = bool(mashing_pattern.match(clean_answer)) or (not has_vowels and length > 5)
+
+        is_too_short = length < 3
+
+        if is_explicit_evasive or is_keyboard_mashing or is_too_short:
+            return {
+                "score": 1 if is_keyboard_mashing else 2 if is_explicit_evasive else 1,
+                "correctness": "incorrect",
+                "technicalDepth": "none",
+                "communication": "evasive",
+                "missingConcepts": ["Core technical concept", "Direct answer to question"],
+                "misconceptions": ["Answer was evasive, gibberish, or non-responsive"],
+                "strengths": [],
+                "weaknesses": ["Failed to provide a relevant technical response"],
+                "shouldFollowUp": True,
+                "followUpType": "diagnostic",
+                "tier": "WEAK",
+            }
+
+        # 3. Relevancy & Quality Assessment
+        domain_keywords = [
             "vector", "embedding", "rag", "agent", "mcp", "latency", "hnsw", "index",
             "retrieval", "hybrid", "sql", "context", "chunk", "transformer", "prompt",
-            "temperature", "eval", "docker", "token", "cache", "venv", "python", "fastapi", "express", "react"
+            "temperature", "eval", "docker", "token", "cache", "venv", "python", "fastapi",
+            "express", "react", "similarity", "cosine", "distance", "nearest", "dimension",
+            "quantization", "re-rank", "rerank", "concurrency", "state", "sse", "websocket",
+            "model", "data", "database", "api", "server", "code", "search", "query",
+            "parameter", "memory", "pip", "virtual", "environment", "setup", "llm", "ai"
         ]
-        hit_count = sum(1 for k in keywords if k in answer.lower())
 
-        score = 5
-        tier = "PARTIAL"
-        correctness = "partially_correct"
-        technical_depth = "medium"
-        follow_up_type = "clarification"
+        question_words = re.findall(r'\b[a-z]{3,}\b', question.lower())
+        question_hit_count = sum(1 for w in question_words if w in clean_answer)
+        domain_hit_count = sum(1 for k in domain_keywords if k in clean_answer)
 
-        if length > 100 and hit_count >= 2:
+        total_hits = domain_hit_count + question_hit_count
+
+        off_topic_keywords = ["pizza", "cricket", "weather", "movie", "football", "burger", "dance", "song"]
+        is_off_topic = any(w in clean_answer for w in off_topic_keywords) and total_hits == 0
+
+        if is_off_topic:
+            return {
+                "score": 2,
+                "correctness": "incorrect",
+                "technicalDepth": "none",
+                "communication": "unclear",
+                "missingConcepts": ["Technical domain principles"],
+                "misconceptions": ["Answer was off-topic and unrelated to the question"],
+                "strengths": [],
+                "weaknesses": ["Answer was completely irrelevant to the technical question"],
+                "shouldFollowUp": True,
+                "followUpType": "diagnostic",
+                "tier": "WEAK",
+            }
+
+        # 4. Scoring for Genuine Technical Answers
+        if total_hits == 0:
+            return {
+                "score": 2,
+                "correctness": "incorrect",
+                "technicalDepth": "none",
+                "communication": "unclear",
+                "missingConcepts": ["Core technical domain concepts", "Relevant answer to question"],
+                "misconceptions": ["Answer was off-topic, gibberish, or non-responsive"],
+                "strengths": [],
+                "weaknesses": ["Failed to address the asked technical question"],
+                "shouldFollowUp": True,
+                "followUpType": "diagnostic",
+                "tier": "WEAK",
+            }
+
+        if total_hits >= 2 or (length > 35 and total_hits >= 1):
             score = 9
             tier = "STRONG"
             correctness = "correct"
             technical_depth = "deep"
             follow_up_type = "deep_dive"
-        elif length > 35 or hit_count >= 1:
+        else:
             score = 7
             tier = "PARTIAL"
             correctness = "mostly_correct"
             technical_depth = "medium"
             follow_up_type = "clarification"
-        else:
-            score = 4
-            tier = "WEAK"
-            correctness = "partially_correct"
-            technical_depth = "surface"
-            follow_up_type = "diagnostic"
-
-        missing_concepts = (
-            [] if tier == "STRONG"
-            else ["production edge cases", "architecture optimization"] if tier == "PARTIAL"
-            else ["core theoretical concepts", "engineering trade-offs"]
-        )
 
         return {
             "score": score,
             "correctness": correctness,
             "technicalDepth": technical_depth,
-            "communication": "clear" if length > 80 else "concise",
-            "missingConcepts": missing_concepts,
-            "misconceptions": ["Confused high-level abstraction with low-level implementation details"] if tier == "WEAK" else [],
-            "strengths": ["Identified main architectural components", "Good technical domain vocabulary"] if tier == "STRONG" else ["Addressed the primary question prompt"],
-            "weaknesses": [] if tier == "STRONG" else ["Could provide more specific numerical trade-offs or production details"],
+            "communication": "clear" if length > 40 else "concise",
+            "missingConcepts": [] if tier == "STRONG" else ["Further architectural trade-offs"],
+            "misconceptions": [],
+            "strengths": ["Addressed question concepts accurately", "Demonstrated sound engineering principles"],
+            "weaknesses": [] if tier == "STRONG" else ["Could provide additional production details"],
             "shouldFollowUp": True,
             "followUpType": follow_up_type,
             "tier": tier,
@@ -113,31 +175,6 @@ class DemoProvider(LLMProvider):
                 "partial": ["Good start on Python setup. How would you configure Pylance and linter settings in VS Code to automatically catch type mismatches before execution?"],
                 "weak": ["Let's clarify virtual environment basics: Why are virtual environments (.venv) critical when managing project dependencies compared to global pip installs?"]
             },
-            2: {
-                "strong": ["Spot on regarding Ollama local models. When deploying local parameter quantization (e.g. Q4_K_M vs Q8_0), how do you measure accuracy loss versus token throughput?"],
-                "partial": ["Good overview of local AI assistants. How do you manage RAM allocation and GPU offloading when running Ollama alongside VS Code?"],
-                "weak": ["Let's step back to local LLM fundamentals: What CLI commands do you use to verify your Ollama model is loaded and ready?"]
-            },
-            3: {
-                "strong": ["Excellent architecture for React and FastAPI integration. How do you handle CORS policies, preflight requests, and API rate limiting in production?"],
-                "partial": ["Good API integration concept. How do you structure state management in React when receiving asynchronous HTTP responses from FastAPI?"],
-                "weak": ["Let's review backend basics: What is the purpose of the health endpoint in a FastAPI web service?"]
-            },
-            4: {
-                "strong": ["Great insights on document parsing. How do you handle noisy PDF layouts, tables, and embedded images when extracting clean Markdown for LLM pipelines?"],
-                "partial": ["Good start on data chunking. What strategy do you use to choose chunk size and chunk overlap to preserve context boundaries?"],
-                "weak": ["Let's clarify parsing basics: Why is raw text cleaning necessary before passing documents into an LLM context?"]
-            },
-            5: {
-                "strong": ["Spot on for tokenization. How do byte-pair encoding (BPE) subword tokenizers handle multilingual datasets and special control tokens?"],
-                "partial": ["Good explanation of context limits. How do you calculate token consumption to estimate API cost before launching batch workloads?"],
-                "weak": ["Let's review tokenization basics: What is the difference between character count, word count, and token count in LLMs?"]
-            },
-            6: {
-                "strong": ["Great analysis of sparse vs dense search. How do you combine BM25 term frequency scores with dense vector embeddings in a unified ranker?"],
-                "partial": ["Good start on sparse indexing. What are the key limitations of traditional keyword search when handling synonyms or misspellings?"],
-                "weak": ["Let's clarify search basics: What does BM25 measure when indexing document terms?"]
-            },
             7: {
                 "strong": ["Spot on for embeddings. Suppose you index 50 million 1536-dimensional vectors — how do scalar quantization (SQ8) and product quantization (PQ) reduce memory while preserving recall?"],
                 "partial": ["Good explanation of semantic similarity. How would your embedding pipeline handle domain-specific vocabulary (such as medical or legal terms)?"],
@@ -147,76 +184,6 @@ class DemoProvider(LLMProvider):
                 "strong": ["Excellent vector database analysis. When tuning HNSW indexing in production, how do you balance parameters M and efConstruction against QPS and build time?"],
                 "partial": ["Good overview of vector DBs. How does an approximate nearest neighbor (ANN) graph index differ from a flat brute-force vector scan?"],
                 "weak": ["Let's break down vector storage basics: What is the role of metadata payload filtering during vector query execution?"]
-            },
-            10: {
-                "strong": ["Great insights on hybrid retrieval. When combining relational SQL query filters with vector cosine similarity, how do you calibrate Reciprocal Rank Fusion (RRF) weights?"],
-                "partial": ["Solid start on query routing. How do you handle multi-intent user queries requiring both structured relational filters and unstructured vector matching?"],
-                "weak": ["Let's clarify retrieval basics: Why is hybrid retrieval necessary when dense vector search fails to match exact part numbers or IDs?"]
-            },
-            11: {
-                "strong": ["Excellent RAG architecture reasoning. How do you implement re-ranking (e.g. using Cohere or BGE re-ranker) to prune irrelevant chunks before context injection?"],
-                "partial": ["Good overview of RAG pipelines. How do you prevent context distortion and hallucination when LLM generation receives conflicting retrieved documents?"],
-                "weak": ["Let me ask a targeted RAG question: What are the three primary steps in an end-to-end Retrieval-Augmented Generation pipeline?"]
-            },
-            12: {
-                "strong": ["Spot on for prompt engineering. How do you mitigate prompt injection attacks when injecting untrusted user inputs into system prompts?"],
-                "partial": ["Good explanation of system steering. How do few-shot exemplars improve structured JSON output consistency compared to zero-shot instructions?"],
-                "weak": ["Let's review prompt fundamentals: What is the role of system prompts versus user prompts in steering LLM behavior?"]
-            },
-            13: {
-                "strong": ["Great function calling expertise. How do you handle schema validation failures when the LLM outputs malformed tool call arguments?"],
-                "partial": ["Good structured output overview. How does the LLM transition between generating natural text and generating structured tool calls?"],
-                "weak": ["Let's clarify tool calling basics: How does the application execute a function after the LLM returns a function call JSON payload?"]
-            },
-            16: {
-                "strong": ["Great Express backend design. How do you handle distributed session locks and prevent race conditions when multiple chat turns hit stateless workers concurrently?"],
-                "partial": ["Good backend architecture overview. How do you structure chat state persistence in PostgreSQL to efficiently fetch recent conversation history?"],
-                "weak": ["Let's review Express API fundamentals: How do you validate incoming REST payloads before forwarding them to the LLM service?"]
-            },
-            18: {
-                "strong": ["Spot on for streaming. How do you handle backpressure and network dropouts when streaming Server-Sent Events (SSE) from LLM backends to React clients?"],
-                "partial": ["Good streaming overview. What are the key differences between Server-Sent Events (SSE) and WebSockets for real-time chat UI?"],
-                "weak": ["Let's review streaming basics: Why is response streaming preferred over waiting for the full LLM completion payload?"]
-            },
-            20: {
-                "strong": ["Excellent context management architecture. How do you design sliding window memory combined with summary compaction to preserve long-term session context?"],
-                "partial": ["Good memory management overview. How do you track token counts dynamically to prevent exceeding LLM context window limits?"],
-                "weak": ["Let's break down chat memory basics: What happens when conversation history grows beyond the model's max context limit?"]
-            },
-            21: {
-                "strong": ["Great agent executor analysis. How do you detect and break infinite execution loops when an autonomous ReAct agent gets stuck in repeating tool calls?"],
-                "partial": ["Good overview of LangChain agents. How does the ReAct (Reasoning + Acting) pattern structure agent decision steps?"],
-                "weak": ["Let's clarify agent basics: What are tools and agent executors in an AI framework?"]
-            },
-            22: {
-                "strong": ["Excellent multi-agent orchestration. In a DAG of specialized agents, how do you handle partial agent failures and implement state rollback or retry mechanisms?"],
-                "partial": ["Good agent routing explanation. How does a router agent determine which downstream sub-agent should handle a specific user request?"],
-                "weak": ["Let's clarify multi-agent basics: What is the main advantage of splitting tasks across specialized sub-agents versus a single monolithic agent?"]
-            },
-            23: {
-                "strong": ["Great MCP understanding. How does the Model Context Protocol handle tool permission scoping and security boundaries when connecting third-party MCP servers?"],
-                "partial": ["Good MCP overview. How do MCP resources, tools, and prompts differ in how context is exposed to the LLM client?"],
-                "weak": ["Let's review MCP basics: What problem does the Model Context Protocol (MCP) solve for AI applications?"]
-            },
-            25: {
-                "strong": ["Spot on for automated evaluation. How do you configure LLM-as-a-judge frameworks to measure faithfulness, answer relevance, and context recall without bias?"],
-                "partial": ["Good evaluation overview. How do guardrails detect toxic content, PII leaks, and prompt injection before returning LLM responses?"],
-                "weak": ["Let me ask an evaluation basic question: Why are automated evaluations necessary alongside human spot-checks?"]
-            },
-            28: {
-                "strong": ["Solid deployment architecture. How do you configure health checks, resource limits, and horizontal autoscaling for LLM gateway microservices under heavy load?"],
-                "partial": ["Good Docker setup. How do you optimize Docker multi-stage builds to minimize image size for Node.js/Python backend services?"],
-                "weak": ["Let's review Docker basics: Why use Docker Compose for local multi-container development?"]
-            },
-            29: {
-                "strong": ["Great observability vision. How do you correlate trace IDs across microservice boundaries to track end-to-end latency and token costs in OpenTelemetry?"],
-                "partial": ["Good monitoring overview. What key parameters would you alert on to detect model latency spikes or guardrail violations in production?"],
-                "weak": ["Let's review logging basics: Why is structured JSON logging essential for production microservices?"]
-            },
-            31: {
-                "strong": ["Outstanding capstone design. Looking back at your full architecture, how did you balance latency SLAs, system accuracy, and operational infrastructure costs?"],
-                "partial": ["Good capstone summary. What was the most challenging trade-off you encountered when connecting your frontend, backend, and vector database?"],
-                "weak": ["Let's summarize your project: What core features of your capstone demo are you most proud of?"]
             }
         }
 
@@ -290,26 +257,46 @@ class DemoProvider(LLMProvider):
         }
 
     def _handle_feedback(self, prompt: str) -> dict:
+        scores = [int(m) for m in re.findall(r'Score\s*(\d+)/10', prompt, re.IGNORECASE)]
+        avg_score = round((sum(scores) / len(scores)) * 10) if scores else 75
+
+        is_high = avg_score >= 70
+        is_medium = 45 <= avg_score < 70
+
         return {
-            "summary": "The candidate demonstrated impressive technical depth across AI engineering fundamentals, system design, and multi-agent architecture. They showed strong reasoning when discussing vector retrieval trade-offs and multi-service deployment.",
+            "summary": (
+                "The candidate demonstrated solid technical depth across AI cohort topics, showcasing clear reasoning on architecture and system trade-offs."
+                if is_high else
+                "The candidate demonstrated partial technical understanding across cohort topics, showing good high-level awareness but missing several low-level details."
+                if is_medium else
+                "The candidate struggled with technical depth during the session, giving evasive or incorrect responses on several core curriculum topics."
+            ),
             "strengths": [
-                "Strong understanding of vector database indexing and semantic retrieval strategies.",
-                "Solid architectural vision for multi-turn conversational state and backend API integration.",
+                "Strong understanding of vector database indexing and retrieval strategies.",
+                "Solid architectural vision for multi-turn state and backend API integration.",
                 "Clear communication of engineering trade-offs between speed, cost, and accuracy."
+            ] if is_high else [
+                "Identified basic high-level system components.",
+                "Attempted answers across multiple curriculum days."
+            ] if is_medium else [
+                "Attempted the technical assessment session."
             ],
             "gaps": [
-                "Could deepen knowledge around ANN (Approximate Nearest Neighbor) graph parameters like HNSW M and efConstruction.",
+                "Could deepen knowledge around ANN graph parameters like HNSW M and efConstruction.",
                 "Production observability and structured evaluation frameworks could be explored further."
+            ] if is_high else [
+                "Need fundamental review of vector embeddings, RAG architectures, and tool calling.",
+                "Precision in technical vocabulary and system design trade-offs requires improvement."
             ],
             "next": [
-                "Study HNSW parameter tuning for high-throughput vector search optimization.",
+                "Review vector database indexing options (HNSW, IVFFlat, SQ8).",
                 "Practice building custom MCP tools and multi-agent routing workflows.",
-                "Explore automated RAG evaluation metrics using Ragas or TruLens."
+                "Study automated RAG evaluation metrics using LLM-as-a-judge frameworks."
             ],
             "subScores": {
-                "technicalDepth": 85,
-                "systemDesign": 82,
-                "communication": 88,
-                "adaptability": 84
+                "technicalDepth": max(10, min(100, avg_score)),
+                "systemDesign": max(10, min(100, avg_score - 3 if is_high else avg_score)),
+                "communication": max(10, min(100, avg_score + 4 if is_high else avg_score)),
+                "adaptability": max(10, min(100, avg_score))
             }
         }

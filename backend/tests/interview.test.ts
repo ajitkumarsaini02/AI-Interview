@@ -86,7 +86,7 @@ describe('AI Interview Agent - Unit & Integration Test Suite', () => {
     expect(strongEval.tier).toBe('STRONG');
 
     const partialEval = await provider.generateStructured(
-      'Evaluate the technical response given by the candidate. Candidate Answer: "It searches similar text using vectors."',
+      'Evaluate the technical response given by the candidate. Candidate Answer: "vectors"',
       'System prompt',
       z.any()
     );

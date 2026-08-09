@@ -28,8 +28,10 @@ export class QuestionService {
     previousQuestion?: string;
     candidateAnswer?: string;
     lastEvaluation?: EvaluationResult;
+    apiKey?: string;
+    provider?: string;
   }): Promise<QuestionGenerationResult> {
-    const llm = getLLMProvider();
+    const llm = getLLMProvider(params.apiKey, params.provider);
     const dayInfo = retrievalService.getDayInfo(params.currentDay);
     const objectives = dayInfo?.objectives || [`Mastery of ${params.currentTopic}`];
 

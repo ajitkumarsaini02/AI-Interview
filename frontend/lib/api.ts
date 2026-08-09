@@ -78,11 +78,19 @@ export async function fetchCandidates(): Promise<CandidateData[]> {
   }
 }
 
+function getSavedAIConfig() {
+  if (typeof window === 'undefined') return {};
+  const apiKey = localStorage.getItem('ai_api_key') || undefined;
+  const provider = localStorage.getItem('ai_provider') || undefined;
+  return { apiKey, provider };
+}
+
 export async function startInterview(sessionId: string, candidate: CandidateData): Promise<InterviewResponse> {
+  const config = getSavedAIConfig();
   const res = await fetch(`${API_URL}/api/interview`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sessionId, candidate }),
+    body: JSON.stringify({ sessionId, candidate, ...config }),
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
@@ -92,10 +100,11 @@ export async function startInterview(sessionId: string, candidate: CandidateData
 }
 
 export async function sendInterviewAnswer(sessionId: string, message: string): Promise<InterviewResponse> {
+  const config = getSavedAIConfig();
   const res = await fetch(`${API_URL}/api/interview`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sessionId, message }),
+    body: JSON.stringify({ sessionId, message, ...config }),
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));

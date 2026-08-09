@@ -118,16 +118,20 @@ Objectives: {obj_str}
 Question: "{question}"
 Candidate Answer: "{answer}"
 
-Evaluate objectively:
+Evaluate objectively and fairly based on factual correctness, relevance, and candidate understanding:
 1. Score from 0 to 10.
+   - 8-10 (STRONG, correct): The candidate's answer is accurate, relevant, and demonstrates sound technical understanding of the question (whether concise or detailed).
+   - 6-7 (PARTIAL, mostly_correct): The answer covers key points but lacks minor completeness or depth.
+   - 4-5 (PARTIAL, partially_correct): The answer shows partial understanding but has notable gaps or minor misconceptions.
+   - 0-3 (WEAK, incorrect): Factually wrong, completely off-topic, evasive ("idk", "pass", "skip"), or pure gibberish.
 2. Correctness tier (correct, mostly_correct, partially_correct, incorrect).
 3. Technical depth (deep, medium, surface, none).
-4. Communication (clear, concise, verbose, unclear).
-5. List missing key concepts or misconceptions.
+4. Communication (clear, concise, verbose, unclear, evasive).
+5. List missing key concepts or misconceptions (if any).
 6. Determine overall performance tier:
-   - "STRONG" (score >= 8): Clear understanding, good technical depth.
-   - "PARTIAL" (score 5-7): Partially correct, missed key nuances or details.
-   - "WEAK" (score < 5): Incorrect or superficial answer.
+   - "STRONG" (score >= 8): Clear understanding and correct technical answer.
+   - "PARTIAL" (score 6-7): Mostly correct with minor gaps.
+   - "WEAK" (score < 6): Incorrect, evasive, or off-topic answer.
 
 Return JSON strictly matching this schema:
 {{
@@ -173,11 +177,11 @@ Topics Covered:
 {topic_str}
 
 Instructions:
-- Provide a clear executive summary (3-4 sentences).
-- List 3-5 key technical strengths demonstrated during the interview.
+- Provide a clear executive summary (3-4 sentences) reflecting their actual session performance.
+- List 3-5 key technical strengths demonstrated during the interview (or areas attempted).
 - List 2-4 specific knowledge gaps or areas for improvement.
 - List 3-4 actionable next steps for their engineering journey.
-- Provide subScores (0-100) for technicalDepth, systemDesign, communication, adaptability.
+- Provide subScores (0-100) for technicalDepth, systemDesign, communication, adaptability. Subscores MUST be proportional to the candidate's average score across their session evaluations. If average evaluation score is low (e.g. 2/10), subScores MUST be low (e.g., around 20-30).
 
 Return JSON strictly matching this schema:
 {{
